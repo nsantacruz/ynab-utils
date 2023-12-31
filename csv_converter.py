@@ -13,8 +13,8 @@ DATA_DIR = "/Users/nss/Downloads"
 
 class CSVConverter(ABC):
 
-    def __init__(self, in_filename: str):
-        self.rows = read_data_file(f"{DATA_DIR}/{in_filename}")
+    def __init__(self, rows: List[object]):
+        self.rows = rows
 
     def convert(self, out_filename: str) -> None:
         converted_rows = [row.serialize() for row in self.get_rows_to_convert()]
@@ -98,8 +98,8 @@ class PoalimRow(CSVRow):
 
 class PoalimConverter(CSVConverter):
 
-    def __init__(self, in_filename: str):
-        super().__init__(in_filename)
+    def __init__(self, rows: List[List[str]]):
+        super().__init__(rows)
 
     def get_rows_to_convert(self) -> List[CSVRow]:
         return [PoalimRow(row) for row in self.rows[6:]]
@@ -130,8 +130,8 @@ class IsracardRow(CSVRow):
 
 class IsracardConverter(CSVConverter):
 
-    def __init__(self, in_filename: str):
-        super().__init__(in_filename)
+    def __init__(self, rows: List[List[str]]):
+        super().__init__(rows)
 
     def _get_mastercard_rows(self) -> List[List[str]]:
         rows = []
@@ -152,7 +152,7 @@ class IsracardConverter(CSVConverter):
         except ValueError:
             return False
 
-    def _get_israel_charges(self) -> List[CSVRow]:
+    def _get_israel_charges(self) -> List[List[str]]:
         rows = self._get_mastercard_rows()
         charges = []
         is_israel = False
@@ -167,9 +167,9 @@ class IsracardConverter(CSVConverter):
             charges += [[
                 row[0], row[1], row[4], row[7]  # date, name, amount, memo
             ]]
-        return [IsracardRow(charges)]
+        return charges
 
-    def _get_foreign_charges(self) -> List[CSVRow]:
+    def _get_foreign_charges(self) -> List[List[str]]:
         rows = self._get_mastercard_rows()
         charges = []
         is_foreign = False
@@ -182,10 +182,10 @@ class IsracardConverter(CSVConverter):
             charges += [[
                 row[1], row[2], row[5], f"Transaction date: {row[0]}"  # date, name, amount, memo
             ]]
-        return [IsracardRow(charges)]
+        return charges
 
     def get_rows_to_convert(self) -> List[CSVRow]:
-        return self._get_israel_charges() + self._get_foreign_charges()
+        return [IsracardRow(row) for row in (self._get_israel_charges() + self._get_foreign_charges())]
 
 
 class CSVConverterFactory:
@@ -222,7 +222,8 @@ def write_csv(filename: Union[str, Path], header_rows: List[str], rows: List[dic
 
 
 def convert_csv(in_filename: str, out_filename: str, source: str) -> None:
-    converter = CSVConverterFactory.create(source, in_filename)
+    rows = read_data_file(f"{DATA_DIR}/{in_filename}")
+    converter = CSVConverterFactory.create(source, rows)
     converter.convert(out_filename)
 
 
