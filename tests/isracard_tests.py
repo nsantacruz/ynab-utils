@@ -1,6 +1,6 @@
 import pytest
 from typing import List
-from csv_converter import IsracardConverter
+from csv_converter import IsracardConverter, IsracardRow
 
 
 @pytest.fixture
@@ -47,3 +47,12 @@ def test_get_foreign_charges(normal_isracard_rows):
     rows = conv._get_foreign_charges()
     assert len(rows) == 1
     assert rows[0] == ["04/07/2023", "AMAZON", "4623", "Transaction date: 03/07/2023"]
+
+
+@pytest.mark.parametrize(('in_row', 'out_row'), [
+    [["04/07/2023", "AMAZON", "4623", "Transaction date: 03/07/2023"], {'Amount': 4623.0, 'Date': '2023-07-04', 'Memo': 'Transaction date: 03/07/2023', 'Payee': 'AMAZON'}],
+    [["04/07/2023", "AMAZON", "-4623.5", "Transaction date: 03/07/2023"], {'Amount': -4623.5, 'Date': '2023-07-04', 'Memo': 'Transaction date: 03/07/2023', 'Payee': 'AMAZON'}],
+])
+def test_isracard_row(in_row, out_row):
+    irow = IsracardRow(in_row)
+    assert irow.serialize() == out_row
