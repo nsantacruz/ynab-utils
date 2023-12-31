@@ -105,10 +105,94 @@ class PoalimConverter(CSVConverter):
         return [PoalimRow(row) for row in self.rows[6:]]
 
 
+class IsracardRow(CSVRow):
+
+    fieldnames = ['date', 'action', 'amount', 'memo']
+    __slots__ = ['date', 'action', 'amount', 'memo']
+
+    def get_amount(self):
+        return float(self.amount)
+
+    def get_payee(self):
+        return self.action
+
+    def get_memo(self):
+        return self.memo
+
+    def get_date(self):
+        return self.convert_date_string(self.date)
+
+    @staticmethod
+    def convert_date_string(date_str: str) -> str:
+        date_obj = datetime.strptime(date_str, "%d/%m/%Y")
+        return date_obj.strftime("%Y-%m-%d")
+
+
+class IsracardConverter(CSVConverter):
+
+    def __init__(self, in_filename: str):
+        super().__init__(in_filename)
+
+    def _get_mastercard_rows(self) -> List[List[str]]:
+        rows = []
+        is_mastercard = False
+        for row in self.rows:
+            if row[0].startswith("מסטרקארד"):
+                is_mastercard = True
+                continue
+            if is_mastercard:
+                rows += [row]
+        return rows
+
+    @staticmethod
+    def _has_valid_date(row: List[str]) -> bool:
+        try:
+            IsracardRow.convert_date_string(row[0])
+            return True
+        except ValueError:
+            return False
+
+    def _get_israel_charges(self) -> List[CSVRow]:
+        rows = self._get_mastercard_rows()
+        charges = []
+        is_israel = False
+        for row in rows:
+            if row[0].startswith("עסקאות בארץ"):
+                is_israel = True
+                continue
+            elif row[1].startswith("סך חיוב"):
+                break
+            if not is_israel or not self._has_valid_date(row):
+                continue
+            charges += [[
+                row[0], row[1], row[4], row[7]  # date, name, amount, memo
+            ]]
+        return [IsracardRow(charges)]
+
+    def _get_foreign_charges(self) -> List[CSVRow]:
+        rows = self._get_mastercard_rows()
+        charges = []
+        is_foreign = False
+        for row in rows:
+            if row[0].startswith("עסקאות בחו˝ל"):
+                is_foreign = True
+                continue
+            if not is_foreign or not self._has_valid_date(row):
+                continue
+            charges += [[
+                row[1], row[2], row[5], f"Transaction date: {row[0]}"  # date, name, amount, memo
+            ]]
+        return [IsracardRow(charges)]
+
+    def get_rows_to_convert(self) -> List[CSVRow]:
+        return self._get_israel_charges() + self._get_foreign_charges()
+
+
 class CSVConverterFactory:
 
     format2converter = {
-        "poalim": PoalimConverter
+        "poalim": PoalimConverter,
+        "isracard": IsracardConverter,
     }
 
     @classmethod
@@ -119,7 +203,7 @@ class CSVConverterFactory:
 def read_data_file(filename: Union[str, Path]) -> List[List[object]]:
     if isinstance(filename, str):
         filename = Path(filename)
-    if filename.suffix.lower() == '.xlsx':
+    if filename.suffix.lower() in {'.xlsx', '.xls'}:
         data = pd.read_excel(filename).values.tolist()
         assert isinstance(data, list)
         return data
