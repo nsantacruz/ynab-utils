@@ -13,7 +13,7 @@ DATA_DIR = "/Users/nss/Downloads"
 
 class CSVConverter(ABC):
 
-    def __init__(self, rows: List[object]):
+    def __init__(self, rows: List[List[object]]):
         self.rows = rows
 
     def convert(self, out_filename: str) -> None:
@@ -133,11 +133,11 @@ class IsracardConverter(CSVConverter):
     def __init__(self, rows: List[List[str]]):
         super().__init__(rows)
 
-    def _get_mastercard_rows(self) -> List[List[str]]:
+    def _get_mastercard_rows(self) -> List[List[object]]:
         rows = []
         is_mastercard = False
         for row in self.rows:
-            if row[0].startswith("מסטרקארד"):
+            if isinstance(row[0], str) and row[0].startswith("מסטרקארד"):
                 is_mastercard = True
                 continue
             if is_mastercard:
@@ -149,7 +149,7 @@ class IsracardConverter(CSVConverter):
         try:
             IsracardRow.convert_date_string(row[0])
             return True
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     def _get_israel_charges(self) -> List[List[str]]:
@@ -169,12 +169,12 @@ class IsracardConverter(CSVConverter):
             ]]
         return charges
 
-    def _get_foreign_charges(self) -> List[List[str]]:
+    def _get_foreign_charges(self) -> List[List[object]]:
         rows = self._get_mastercard_rows()
         charges = []
         is_foreign = False
         for row in rows:
-            if row[0].startswith("עסקאות בחו˝ל"):
+            if isinstance(row[0], str) and row[0].startswith("עסקאות בחו˝ל"):
                 is_foreign = True
                 continue
             if not is_foreign or not self._has_valid_date(row):
