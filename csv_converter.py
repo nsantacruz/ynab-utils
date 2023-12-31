@@ -2,7 +2,8 @@ import csv
 import pandas as pd
 import typer
 import math
-from typing import List
+from typing import List, Union
+from pathlib import Path
 from datetime import datetime
 from abc import ABC, abstractmethod
 
@@ -115,19 +116,21 @@ class CSVConverterFactory:
         return cls.format2converter.get(source)(*converter_args, **converter_kwargs)
 
 
-def read_data_file(filename: str) -> List[List[object]]:
-    if filename.endswith(".xlsx"):
+def read_data_file(filename: Union[str, Path]) -> List[List[object]]:
+    if isinstance(filename, str):
+        filename = Path(filename)
+    if filename.suffix.lower() == '.xlsx':
         data = pd.read_excel(filename).values.tolist()
         assert isinstance(data, list)
         return data
-    elif filename.endswith(".csv"):
+    elif filename.suffix.lower() == ".csv":
         with open(filename, 'r') as fin:
             return list(csv.reader(fin))
     else:
         raise RuntimeError(f"Unknown file type for file '{filename}'")
 
 
-def write_csv(filename: str, header_rows: List[str], rows: List[dict]) -> None:
+def write_csv(filename: Union[str, Path], header_rows: List[str], rows: List[dict]) -> None:
     with open(filename, 'w') as fout:
         cout = csv.DictWriter(fout, header_rows)
         cout.writeheader()
