@@ -56,3 +56,14 @@ def test_get_foreign_charges(normal_isracard_rows):
 def test_isracard_row(in_row, out_row):
     irow = IsracardRow(in_row)
     assert irow.serialize() == out_row
+
+
+@pytest.mark.parametrize(('memo', 'is_first'), [
+    ['blah', False],
+    ['תשלום 1 מתוך adsdf', False],
+    ['תשלום 1 מתוך 3', True],
+    ['תשלום 2 מתוך 3', False],
+])
+def test_is_first_payment(memo, is_first):
+    row = IsracardRow(['', '', '', memo, ''])
+    assert row._is_first_payment() == is_first

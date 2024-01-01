@@ -1,4 +1,5 @@
 import csv
+import re
 import pandas as pd
 import typer
 import math
@@ -112,6 +113,14 @@ class IsracardRow(CSVRow):
 
     def get_amount(self):
         return -float(self.amount)
+
+    def _is_first_payment(self):
+        """
+        :return: True if this row represents the first payment of a series
+        """
+        payment_reg = r"תשלום (\d+) מתוך (\d+)"
+        match = re.match(payment_reg, self.memo)
+        return match is not None and int(match.group(1)) == 1
 
     def get_payee(self):
         payee = self.action
