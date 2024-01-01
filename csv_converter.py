@@ -107,14 +107,17 @@ class PoalimConverter(CSVConverter):
 
 class IsracardRow(CSVRow):
 
-    fieldnames = ['date', 'action', 'amount', 'memo']
-    __slots__ = ['date', 'action', 'amount', 'memo']
+    fieldnames = ['date', 'action', 'amount', 'memo', 'transaction_id']
+    __slots__ = ['date', 'action', 'amount', 'memo', 'transaction_id']
 
     def get_amount(self):
         return -float(self.amount)
 
     def get_payee(self):
-        return self.action
+        payee = self.action
+        if "BIT" in payee or "PAYBOX" in payee:
+            payee += f" {self.transaction_id}"  # so ynab doesn't auto-match it
+        return payee
 
     def get_memo(self):
         return self.memo
@@ -165,7 +168,7 @@ class IsracardConverter(CSVConverter):
             if not is_israel or not self._has_valid_date(row):
                 continue
             charges += [[
-                row[0], row[1], row[4], row[7]  # date, name, amount, memo
+                row[0], row[1], row[4], row[7], row[6]  # date, name, amount, memo, ID
             ]]
         return charges
 
@@ -180,7 +183,7 @@ class IsracardConverter(CSVConverter):
             if not is_foreign or not self._has_valid_date(row):
                 continue
             charges += [[
-                row[1], row[2], row[5], f"Transaction date: {row[0]}. Original amt: {row[4]}{row[3]}"  # date, name, amount, memo
+                row[1], row[2], row[5], f"Transaction date: {row[0]}. Original amt: {row[4]}{row[3]}", "N/A"  # date, name, amount, memo, ID
             ]]
         return charges
 
