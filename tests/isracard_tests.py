@@ -58,12 +58,22 @@ def test_isracard_row(in_row, out_row):
     assert irow.serialize() == out_row
 
 
-@pytest.mark.parametrize(('memo', 'is_first'), [
-    ['blah', False],
-    ['תשלום 1 מתוך adsdf', False],
-    ['תשלום 1 מתוך 3', True],
-    ['תשלום 2 מתוך 3', False],
+@pytest.mark.parametrize(('memo', 'payment_num'), [
+    ['blah', None],
+    ['תשלום 1 מתוך adsdf', None],
+    ['תשלום 1 מתוך 3', 1],
+    ['תשלום 2 מתוך 3', 2],
+    [None, None],  # memo can be None sometimes
 ])
-def test_is_first_payment(memo, is_first):
+def test_get_payment_num(memo, payment_num):
     row = IsracardRow(['', '', '', memo, ''])
-    assert row._is_first_payment() == is_first
+    assert row._get_payment_num() == payment_num
+
+
+@pytest.mark.parametrize(('in_date', 'n_months', 'out_date'), [
+    ['01/01/1970', 2, '01/03/1970'],
+    ['01/01/1970', 0, '01/01/1970'],
+])
+def test_add_n_months_to_date(in_date, n_months, out_date):
+    row = IsracardRow([in_date, '', '', '', ''])
+    assert row._add_n_months_to_date(n_months) == out_date

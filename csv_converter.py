@@ -3,7 +3,7 @@ import re
 import pandas as pd
 import typer
 import math
-from typing import List, Union
+from typing import List, Union, Optional
 from pathlib import Path
 from datetime import datetime
 from abc import ABC, abstractmethod
@@ -114,13 +114,15 @@ class IsracardRow(CSVRow):
     def get_amount(self):
         return -float(self.amount)
 
-    def _is_first_payment(self):
+    def _get_payment_num(self) -> Optional[int]:
         """
         :return: True if this row represents the first payment of a series
         """
+        if not self.memo:
+            return
         payment_reg = r"תשלום (\d+) מתוך (\d+)"
         match = re.match(payment_reg, self.memo)
-        return match is not None and int(match.group(1)) == 1
+        return match and int(match.group(1))
 
     def get_payee(self):
         payee = self.action
@@ -132,7 +134,16 @@ class IsracardRow(CSVRow):
         return self.memo
 
     def get_date(self):
-        return self.convert_date_string(self.date)
+        payment_num = self._get_payment_num()
+        date_str = self.date
+        if payment_num and payment_num > 1:
+            date_str = self._add_n_months_to_date(payment_num-1)
+        return self.convert_date_string(date_str)
+
+    def _add_n_months_to_date(self, n_months):
+        date_obj = datetime.strptime(self.date, "%d/%m/%Y")
+        date_obj = date_obj.replace(month=date_obj.month + n_months)
+        return date_obj.strftime("%d/%m/%Y")
 
     @staticmethod
     def convert_date_string(date_str: str) -> str:
