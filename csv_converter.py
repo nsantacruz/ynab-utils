@@ -9,7 +9,7 @@ from datetime import datetime
 from abc import ABC, abstractmethod
 
 
-DATA_DIR = "/Users/nss/Downloads"
+DATA_DIR = "/home/nss/Downloads"
 
 
 class CSVConverter(ABC):
@@ -99,7 +99,7 @@ class PoalimRow(CSVRow):
 
 class PoalimConverter(CSVConverter):
 
-    def __init__(self, rows: List[List[str]]):
+    def __init__(self, rows: List[List[str]], *args, **kwargs):
         super().__init__(rows)
 
     def get_rows_to_convert(self) -> List[CSVRow]:
@@ -153,17 +153,25 @@ class IsracardRow(CSVRow):
 
 class IsracardConverter(CSVConverter):
 
-    def __init__(self, rows: List[List[str]]):
+    def __init__(self, rows: List[List[str]], card_number: str):
         super().__init__(rows)
+        self.card_number = card_number
 
     def _get_mastercard_rows(self) -> List[List[object]]:
         rows = []
-        is_mastercard = False
+        is_the_card = False
+        is_any_card_reg = re.compile("מסטרקארד - \d+")
+        search_phrase = f"מסטרקארד - {self.card_number}"
         for row in self.rows:
-            if isinstance(row[0], str) and row[0].startswith("מסטרקארד"):
-                is_mastercard = True
-                continue
-            if is_mastercard:
+            if isinstance(row[0], str):
+                if search_phrase in row[0]:
+                    is_the_card = True
+                    continue
+                elif is_any_card_reg.search(row[0]) is not None:
+                    # not THE card. some other card
+                    is_the_card = False
+                    continue
+            if is_the_card:
                 rows += [row]
         return rows
 
@@ -244,9 +252,9 @@ def write_csv(filename: Union[str, Path], header_rows: List[str], rows: List[dic
         cout.writerows(rows)
 
 
-def convert_csv(in_filename: str, out_filename: str, source: str) -> None:
+def convert_csv(in_filename: str, out_filename: str, source: str, card_number: str) -> None:
     rows = read_data_file(f"{DATA_DIR}/{in_filename}")
-    converter = CSVConverterFactory.create(source, rows)
+    converter = CSVConverterFactory.create(source, rows, card_number)
     converter.convert(out_filename)
 
 
